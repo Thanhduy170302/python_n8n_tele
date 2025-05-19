@@ -356,7 +356,26 @@ async def send_image_to_telegram(image_path, caption=None):
             raise
 
 def delete_mysql_tables(tables):
-    pass  # Đã bỏ chức năng xóa bảng
+    """Xóa các bảng tạm trong database sau khi hoàn thành báo cáo"""
+    try:
+        logging.info("Bắt đầu xóa các bảng tạm...")
+        connection = mysql.connector.connect(**mysql_config)
+        cursor = connection.cursor()
+        
+        for table in tables:
+            try:
+                cursor.execute(f"DROP TABLE IF EXISTS {table}")
+                logging.info(f"Đã xóa bảng {table}")
+            except Error as e:
+                logging.error(f"Lỗi khi xóa bảng {table}: {e}")
+        
+        connection.commit()
+        cursor.close()
+        connection.close()
+        logging.info("Hoàn thành xóa các bảng tạm")
+    except Error as e:
+        logging.error(f"Lỗi khi kết nối database để xóa bảng: {e}")
+        raise
 
 async def process_excel_to_telegram():
     """Quy trình chính: Excel -> MySQL -> Telegram -> Cleanup"""
@@ -817,6 +836,10 @@ async def main():
         
         # Gửi cả hình ảnh và điểm tin lên Telegram
         await send_image_to_telegram(image_path, caption=report_text)
+
+        # Xóa các bảng database sau khi gửi thành công
+        tables_to_delete = ['danh_sach_ctv_dl', 'danhsachdonhang']
+        delete_mysql_tables(tables_to_delete)
         
         logging.info("Hoàn thành quy trình tạo báo cáo!")
         
